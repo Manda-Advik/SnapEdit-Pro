@@ -16,8 +16,7 @@ from ui_components import (
     render_ar_filters_tab,
     render_gesture_control_tab,
     render_download_section,
-    render_welcome_screen,
-    render_footer
+    render_welcome_screen
 )
 
 st.set_page_config(
@@ -49,5 +48,3 @@ if st.session_state.image is not None:
     render_download_section()
 else:
     render_welcome_screen()
-
-render_footer()
