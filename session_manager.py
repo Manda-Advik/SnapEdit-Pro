@@ -12,6 +12,8 @@ def initialize_session_state():
         st.session_state.ar_filters = None
     if 'gesture_controller' not in st.session_state:
         st.session_state.gesture_controller = None
+    if 'emotion_reactor' not in st.session_state:
+        st.session_state.emotion_reactor = None
     if 'music_controller' not in st.session_state:
         st.session_state.music_controller = MusicController()
     if 'current_filter' not in st.session_state:
@@ -52,3 +54,14 @@ def get_gesture_controller():
             st.info("💡 You can still use Basic Editing features! Gesture control requires compatible MediaPipe version.")
             return None
     return st.session_state.gesture_controller
+
+def get_emotion_reactor():
+    if st.session_state.emotion_reactor is None:
+        try:
+            from emotion_reactor import EmotionReactor
+            st.session_state.emotion_reactor = EmotionReactor()
+            return st.session_state.emotion_reactor
+        except Exception as e:
+            st.error(f"⚠️ Emotion Reactor unavailable: {str(e)[:100]}")
+            return None
+    return st.session_state.emotion_reactor

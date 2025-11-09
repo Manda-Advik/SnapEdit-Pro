@@ -15,6 +15,7 @@ from ui_components import (
     render_basic_editing_tab,
     render_ar_filters_tab,
     render_gesture_control_tab,
+    render_emotion_reactor_tab,
     render_download_section,
     render_welcome_screen
 )
@@ -34,7 +35,11 @@ render_header()
 
 mode = render_sidebar()
 
-if st.session_state.image is not None:
+if mode == "Emotion Reactor":
+    render_emotion_reactor_tab()
+elif mode == "Gesture Control":
+    render_gesture_control_tab()
+elif st.session_state.image is not None:
     render_image_preview()
     st.divider()
     
@@ -42,8 +47,6 @@ if st.session_state.image is not None:
         render_basic_editing_tab()
     elif mode == "AR Filters":
         render_ar_filters_tab()
-    elif mode == "Gesture Control":
-        render_gesture_control_tab()
     
     render_download_section()
 else:
