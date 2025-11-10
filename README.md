@@ -6,13 +6,25 @@ Advanced computer vision application with image editing, AR filters, real-time g
 
 ## 🚀 How to Run
 
-### **1. Install Dependencies**
+### **1. Activate Virtual Environment** (if using venv)
+
+**Windows:**
+```bash
+venv311\Scripts\activate
+```
+
+**macOS/Linux:**
+```bash
+source venv311/bin/activate
+```
+
+### **2. Install Dependencies**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### **2. Run the Application**
+### **3. Run the Application**
 
 ```bash
 streamlit run app.py
