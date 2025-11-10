@@ -105,8 +105,8 @@ class GestureController:
         # Also check middle joints to ensure proper pinch
         joint_distance = self.calculate_distance(thumb_ip, index_pip)
         
-        # Very strict threshold - fingers must be very close
-        is_pinch = tip_distance < 0.03 and joint_distance < 0.08
+        # Relaxed threshold - easier to detect pinch
+        is_pinch = tip_distance < 0.05 and joint_distance < 0.12
         
         return is_pinch
     
