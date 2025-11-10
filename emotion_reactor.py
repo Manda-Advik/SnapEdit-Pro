@@ -34,7 +34,6 @@ class EmotionReactor:
                 filepath = os.path.join(self.assets_dir, filename)
                 video_files[filename.lower()] = filepath
         
-        # Map all video files to different emotions/gestures
         if 'smiling.mp4' in video_files:
             self.videos['smiling'] = video_files['smiling.mp4']
         
@@ -118,11 +117,8 @@ class EmotionReactor:
 
     
     def _detect_hand_gesture(self, hand_landmarks):
-        """Detect specific hand gestures based on finger positions"""
-        # Get landmark positions
         landmarks = hand_landmarks.landmark
         
-        # Finger tips and bases
         thumb_tip = landmarks[4]
         index_tip = landmarks[8]
         middle_tip = landmarks[12]
@@ -136,13 +132,10 @@ class EmotionReactor:
         thumb_base = landmarks[2]
         wrist = landmarks[0]
         
-        # Count extended fingers for gestures - more lenient thresholds
         def is_finger_extended(tip, base):
-            return tip.y < base.y - 0.02  # Reduced threshold for easier detection
+            return tip.y < base.y - 0.02
         
-        # Check thumb extension - more lenient
         def is_thumb_extended(tip, base, wrist):
-            # Check if thumb is away from palm (either horizontal or vertical)
             horizontal_ext = abs(tip.x - base.x) > 0.04
             vertical_ext = tip.y < wrist.y - 0.02
             return horizontal_ext or vertical_ext
@@ -159,16 +152,12 @@ class EmotionReactor:
         
         thumb_extended = is_thumb_extended(thumb_tip, thumb_base, wrist)
         
-        # Open palm (wave) - at least 3 fingers + thumb extended (more lenient)
         if len(extended_fingers) >= 3 and thumb_extended:
             return "waving"
         
-        # Peace sign - only index and middle fingers extended
         if len(extended_fingers) == 2 and 'index' in extended_fingers and 'middle' in extended_fingers:
             return "peace_sign"
         
-        # Heart/Love gesture - both hands forming heart (simplified: index and thumb close)
-        # Check if thumb and index finger tips are close together
         thumb_index_distance = ((thumb_tip.x - index_tip.x)**2 + (thumb_tip.y - index_tip.y)**2)**0.5
         if thumb_index_distance < 0.08 and len(extended_fingers) <= 1:
             return "heart_gesture"
@@ -177,7 +166,6 @@ class EmotionReactor:
     
     def process_video_frame(self, frame):
         if not self.has_mediapipe:
-            # MediaPipe is required for emotion detection
             annotated_frame = frame.copy()
             cv2.putText(annotated_frame, 'MediaPipe not available', (10, 30),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
@@ -192,21 +180,18 @@ class EmotionReactor:
                 current_state = "straight_face"
                 annotated_frame = frame.copy()
                 
-                # Process hands for gesture detection
                 results_hands = hands.process(image_rgb)
                 hand_gesture = None
                 detected_gestures = []
                 hands_visible = False
                 
                 if results_hands.multi_hand_landmarks:
-                    hands_visible = True  # Mark that hands are detected
-                    # Import drawing utilities
+                    hands_visible = True
                     import mediapipe as mp
                     mp_drawing = mp.solutions.drawing_utils
                     mp_drawing_styles = mp.solutions.drawing_styles
                     
                     for hand_landmarks in results_hands.multi_hand_landmarks:
-                        # Draw hand landmarks
                         mp_drawing.draw_landmarks(
                             annotated_frame,
                             hand_landmarks,
@@ -215,25 +200,20 @@ class EmotionReactor:
                             mp_drawing_styles.get_default_hand_connections_style()
                         )
                         
-                        # Detect gestures based on finger positions
                         gesture = self._detect_hand_gesture(hand_landmarks)
                         if gesture:
                             detected_gestures.append(gesture)
                     
-                    # Check if both hands showing waving (open palms) - consider as hands up
                     if detected_gestures.count("waving") >= 2:
                         hand_gesture = "hands_up"
                         current_state = "hands_up"
-                    # Use first detected hand gesture (one hand is enough for other gestures)
                     elif len(detected_gestures) > 0:
                         hand_gesture = detected_gestures[0]
                         current_state = hand_gesture
                 
-                # Process pose only if no hand gesture detected
                 if not hand_gesture:
                     results_pose = pose.process(image_rgb)
                     if results_pose.pose_landmarks:
-                        # Import drawing utilities if not already
                         if 'mp_drawing' not in locals():
                             import mediapipe as mp
                             mp_drawing = mp.solutions.drawing_utils
@@ -241,7 +221,6 @@ class EmotionReactor:
                         
                         landmarks = results_pose.pose_landmarks.landmark
                         
-                        # Draw pose landmarks (body and hands)
                         mp_drawing.draw_landmarks(
                             image=annotated_frame,
                             landmark_list=results_pose.pose_landmarks,
@@ -259,40 +238,28 @@ class EmotionReactor:
                         left_eye = landmarks[self.mp_pose.PoseLandmark.LEFT_EYE]
                         right_eye = landmarks[self.mp_pose.PoseLandmark.RIGHT_EYE]
 
-                        # Calculate distances for hand-to-face detection
                         left_hand_to_face = ((left_wrist.x - nose.x)**2 + (left_wrist.y - nose.y)**2)**0.5
                         right_hand_to_face = ((right_wrist.x - nose.x)**2 + (right_wrist.y - nose.y)**2)**0.5
                         
-                        # Detect different poses with priority order
-                        
-                        # Hands on face - both hands near face
                         if left_hand_to_face < 0.15 and right_hand_to_face < 0.15:
-                            current_state = "straight_face"  # Maps to handsonface.mp4
+                            current_state = "straight_face"
                         
-                        # Hands up - both hands above shoulders (check first, more lenient)
-                        # Just need hands higher than shoulders
                         if (left_wrist.y < left_shoulder.y) and (right_wrist.y < right_shoulder.y):
                             current_state = "hands_up"
                         
-                        # Dab - improved detection for classic dab pose
-                        # One arm crosses to opposite side, face typically "hidden" in elbow
-                        # More lenient detection
                         elif (left_wrist.x > right_shoulder.x - 0.1 and left_elbow.y < left_shoulder.y + 0.1) or \
                              (right_wrist.x < left_shoulder.x + 0.1 and right_elbow.y < right_shoulder.y + 0.1):
                             current_state = "dab"
                 
-                # Always check for smile if no other gesture detected (default state)
                 if current_state == "straight_face":
                     results_face = face_mesh.process(image_rgb)
                     if results_face.multi_face_landmarks:
-                        # Import drawing utilities if not already imported
                         if 'mp_drawing' not in locals():
                             import mediapipe as mp
                             mp_drawing = mp.solutions.drawing_utils
                             mp_drawing_styles = mp.solutions.drawing_styles
                         
                         for face_landmarks in results_face.multi_face_landmarks:
-                            # Draw face mesh on the frame
                             mp_drawing.draw_landmarks(
                                 image=annotated_frame,
                                 landmark_list=face_landmarks,
@@ -301,7 +268,6 @@ class EmotionReactor:
                                 connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_tesselation_style()
                             )
                             
-                            # Draw face contours
                             mp_drawing.draw_landmarks(
                                 image=annotated_frame,
                                 landmark_list=face_landmarks,
@@ -310,31 +276,22 @@ class EmotionReactor:
                                 connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_contours_style()
                             )
                             
-                            # Check for smile using simplified and more sensitive method
-                            # Landmarks for smile detection
-                            left_mouth_corner = face_landmarks.landmark[61]   # Left corner
-                            right_mouth_corner = face_landmarks.landmark[291] # Right corner
-                            upper_lip = face_landmarks.landmark[13]           # Upper lip center
-                            lower_lip = face_landmarks.landmark[14]           # Lower lip center
+                            left_mouth_corner = face_landmarks.landmark[61]
+                            right_mouth_corner = face_landmarks.landmark[291]
+                            upper_lip = face_landmarks.landmark[13]
+                            lower_lip = face_landmarks.landmark[14]
                             
-                            # Calculate mouth width
                             mouth_width = abs(right_mouth_corner.x - left_mouth_corner.x)
-                            
-                            # Calculate mouth height (vertical opening)
                             mouth_height = abs(lower_lip.y - upper_lip.y)
                             
-                            # Calculate mouth aspect ratio
                             if mouth_height > 0.001:
                                 mouth_ratio = mouth_width / mouth_height
                             else:
                                 mouth_ratio = 0
                             
-                            # Very sensitive smile detection - just check if mouth is wide
-                            # Lowered threshold from 3.5 to 2.5 for easier detection
                             if mouth_ratio > 2.5:
                                 current_state = "smiling"
                             
-                            # Debug info (optional - shows ratio on screen)
                             cv2.putText(annotated_frame, f'Mouth Ratio: {mouth_ratio:.2f}', (10, 60),
                                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
                 
