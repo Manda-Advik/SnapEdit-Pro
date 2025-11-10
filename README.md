@@ -62,9 +62,3 @@ pip install pygame
 ```
 
 ---
-
-## 📚 Documentation
-
-For detailed information:
-- **README_DETAILED.md** - Complete technical documentation
-- **SnapEdit-Pro-Architecture.drawio** - System architecture diagram
